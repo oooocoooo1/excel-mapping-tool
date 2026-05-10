@@ -2,6 +2,8 @@
 
 一个基于 Flask + TypeScript 的 Excel 字段映射工具，用于在源表和目标表之间建立字段关系，并生成新的 `.xlsx` 文件。
 
+https://excel-mapping-tool.onrender.com/
+
 ## 功能
 
 - 上传源 Excel 和目标 Excel 文件
