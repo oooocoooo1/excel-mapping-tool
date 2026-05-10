@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 import uuid
 
@@ -15,7 +16,7 @@ APP_TEMP_DIR = os.environ.get(
     "EXCEL_MAPPING_TEMP_DIR",
     os.path.join(tempfile.gettempdir(), "excel_mapping_tool"),
 )
-FILE_REGISTRY = {}
+FILE_ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 
 
 def ensure_temp_dir():
@@ -32,29 +33,31 @@ def path_is_in_temp_dir(path: str) -> bool:
     return os.path.commonpath([temp_root, candidate]) == temp_root
 
 
-def register_file(path: str, kind: str) -> str:
-    if not path_is_in_temp_dir(path):
-        raise ValueError("File is outside the application temp directory")
-
-    file_id = uuid.uuid4().hex
-    FILE_REGISTRY[file_id] = {"path": path, "kind": kind}
-    return file_id
+def new_file_id() -> str:
+    return uuid.uuid4().hex
 
 
-def resolve_file(file_id: str, allowed_kinds: set[str]) -> str | None:
-    if not file_id or not isinstance(file_id, str):
+def resolve_file(file_id: str, kind: str) -> str | None:
+    if not file_id or not isinstance(file_id, str) or not FILE_ID_PATTERN.fullmatch(file_id):
         return None
 
-    record = FILE_REGISTRY.get(file_id)
-    if not record or record["kind"] not in allowed_kinds:
+    ensure_temp_dir()
+
+    if kind == "upload":
+        candidates = [
+            os.path.join(APP_TEMP_DIR, f"upload_{file_id}.xlsx"),
+            os.path.join(APP_TEMP_DIR, f"upload_{file_id}.xls"),
+        ]
+    elif kind == "output":
+        candidates = [os.path.join(APP_TEMP_DIR, f"output_{file_id}.xlsx")]
+    else:
         return None
 
-    path = record["path"]
-    if not path_is_in_temp_dir(path) or not os.path.exists(path):
-        FILE_REGISTRY.pop(file_id, None)
-        return None
+    for path in candidates:
+        if path_is_in_temp_dir(path) and os.path.exists(path):
+            return path
 
-    return path
+    return None
 
 
 @app.route("/")
@@ -74,12 +77,12 @@ def upload_excel():
         return jsonify({"error": "Please upload an Excel file in xls or xlsx format."}), 400
 
     ext = os.path.splitext(file.filename or "")[1].lower()
-    upload_path = os.path.join(APP_TEMP_DIR, f"upload_{uuid.uuid4().hex}{ext}")
+    file_id = new_file_id()
+    upload_path = os.path.join(APP_TEMP_DIR, f"upload_{file_id}{ext}")
     file.save(upload_path)
 
     try:
         headers, sheets = read_excel_headers(upload_path, header_row, sheet_name)
-        file_id = register_file(upload_path, "upload")
         return jsonify({"headers": headers, "file_id": file_id, "sheets": sheets})
     except Exception as exc:
         try:
@@ -107,12 +110,13 @@ def copy_excel():
         if not source_file_id or not target_file_id or not mapping:
             return jsonify({"error": "Missing required parameters."}), 400
 
-        source_path = resolve_file(source_file_id, {"upload"})
-        target_path = resolve_file(target_file_id, {"upload"})
+        source_path = resolve_file(source_file_id, "upload")
+        target_path = resolve_file(target_file_id, "upload")
 
         if not source_path or not target_path:
             return jsonify({"error": "Uploaded file was not found or has expired."}), 404
 
+        download_id = new_file_id()
         output_path = copy_excel_with_mapping(
             source_path,
             target_path,
@@ -123,8 +127,8 @@ def copy_excel():
             source_sheet=source_sheet,
             target_sheet=target_sheet,
             output_dir=APP_TEMP_DIR,
+            output_name=f"output_{download_id}.xlsx",
         )
-        download_id = register_file(output_path, "output")
 
         return jsonify({"download_id": download_id})
     except Exception as exc:
@@ -134,7 +138,7 @@ def copy_excel():
 @app.route("/api/download", methods=["GET"])
 def download():
     download_id = request.args.get("id")
-    path = resolve_file(download_id, {"output"}) if download_id else None
+    path = resolve_file(download_id, "output") if download_id else None
 
     if not path:
         return "File not found", 404

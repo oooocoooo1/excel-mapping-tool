@@ -41,6 +41,7 @@ def copy_excel_with_mapping(
     source_sheet=None,
     target_sheet=None,
     output_dir=None,
+    output_name=None,
 ):
     """
     Copy source workbook data into target workbook according to column mapping.
@@ -86,7 +87,8 @@ def copy_excel_with_mapping(
 
         output_root = output_dir or tempfile.gettempdir()
         os.makedirs(output_root, exist_ok=True)
-        output_path = os.path.join(output_root, f"mapped_{datetime.now():%Y%m%d_%H%M%S}_{os.getpid()}.xlsx")
+        output_filename = output_name or f"mapped_{datetime.now():%Y%m%d_%H%M%S}_{os.getpid()}.xlsx"
+        output_path = os.path.join(output_root, output_filename)
         target_workbook.save(output_path)
         return output_path
     finally:
