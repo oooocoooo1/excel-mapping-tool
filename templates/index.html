@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>电子表格字段映射工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<main class="app-shell">
+    <header class="app-header">
+        <div>
+            <p class="eyebrow">Excel Mapping Tool</p>
+            <h1>电子表格字段映射工具</h1>
+            <p class="subtitle">上传源表和目标表，拖拽字段建立映射，生成新的 Excel 文件。</p>
+        </div>
+        <div class="header-stats" aria-live="polite">
+            <span><strong id="sourceCount">0</strong> 源字段</span>
+            <span><strong id="targetCount">0</strong> 目标字段</span>
+            <span><strong id="mappingCount">0</strong> 映射</span>
+        </div>
+    </header>
+
+    <section class="upload-grid" aria-label="文件上传">
+        <article class="file-panel">
+            <div class="panel-heading">
+                <span class="step-badge">1</span>
+                <div>
+                    <h2>源 Excel</h2>
+                    <p>选择包含原始数据的文件</p>
+                </div>
+            </div>
+            <label class="file-picker" for="sourceFile">
+                <span>上传源文件</span>
+                <input type="file" id="sourceFile" accept=".xls,.xlsx">
+            </label>
+            <div class="form-grid">
+                <label>
+                    <span>工作表</span>
+                    <select id="sourceSheet" disabled>
+                        <option value="">请先上传文件</option>
+                    </select>
+                </label>
+                <label>
+                    <span>表头行号</span>
+                    <input type="number" id="sourceHeaderRow" min="1" value="1">
+                </label>
+            </div>
+        </article>
+
+        <article class="file-panel">
+            <div class="panel-heading">
+                <span class="step-badge">2</span>
+                <div>
+                    <h2>目标 Excel</h2>
+                    <p>选择要写入数据的模板文件</p>
+                </div>
+            </div>
+            <label class="file-picker" for="targetFile">
+                <span>上传目标文件</span>
+                <input type="file" id="targetFile" accept=".xls,.xlsx">
+            </label>
+            <div class="form-grid">
+                <label>
+                    <span>工作表</span>
+                    <select id="targetSheet" disabled>
+                        <option value="">请先上传文件</option>
+                    </select>
+                </label>
+                <label>
+                    <span>表头行号</span>
+                    <input type="number" id="targetHeaderRow" min="1" value="1">
+                </label>
+            </div>
+        </article>
+    </section>
+
+    <section class="workspace" aria-label="字段映射">
+        <div class="workspace-toolbar">
+            <div>
+                <h2>字段映射</h2>
+                <p id="workspaceHint">上传两个文件后，可拖拽或点击字段建立映射。</p>
+            </div>
+            <div class="toolbar-stack">
+                <div class="toolbar-actions">
+                    <button type="button" class="secondary-btn" id="autoMapBtn">自动匹配</button>
+                    <button type="button" class="ghost-btn" id="clearBtn">清空映射</button>
+                </div>
+                <div class="run-panel">
+                    <div class="mode-card compact-mode">
+                        <p class="panel-kicker">复制模式</p>
+                        <label class="mode-option">
+                            <input type="radio" name="copyMode" value="replace" checked>
+                            <span>
+                                <strong>替换</strong>
+                                <small>覆盖目标表头下方的数据</small>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="copyMode" value="append">
+                            <span>
+                                <strong>追加</strong>
+                                <small>写入到目标表末尾</small>
+                            </span>
+                        </label>
+                    </div>
+                    <button type="button" class="primary-btn" id="genBtn" disabled>生成并下载</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mapper-board" id="mappingBoard">
+            <svg id="mappingSvg" class="mapping-svg" aria-hidden="true"></svg>
+
+            <section class="field-panel source-panel">
+                <div class="field-panel-header">
+                    <div>
+                        <span class="panel-kicker">Source</span>
+                        <h3>源字段</h3>
+                    </div>
+                    <input type="search" id="sourceSearch" placeholder="筛选源字段">
+                </div>
+                <div class="field-list" id="sourceFields"></div>
+            </section>
+
+            <section class="field-panel target-panel">
+                <div class="field-panel-header">
+                    <div>
+                        <span class="panel-kicker">Target</span>
+                        <h3>目标字段</h3>
+                    </div>
+                    <input type="search" id="targetSearch" placeholder="筛选目标字段">
+                </div>
+                <div class="field-list" id="targetFields"></div>
+            </section>
+        </div>
+    </section>
+
+    <section class="mapping-summary" aria-label="已建立的映射">
+        <div class="summary-heading">
+            <div>
+                <p class="panel-kicker">Review</p>
+                <h2>已建立的映射</h2>
+            </div>
+            <p id="summaryText">暂无映射</p>
+        </div>
+        <ul class="mapping-list" id="mappingList"></ul>
+    </section>
+</main>
+
+<div id="floatingToast" class="floating-toast" role="status" aria-live="polite"></div>
+<script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
